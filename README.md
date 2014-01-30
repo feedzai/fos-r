@@ -2,6 +2,9 @@
 
 fos-r is a [fos-core] [R] implementation
 
+[![Build Status](https://feedzaios.ci.cloudbees.com/buildStatus/icon?job=fos-r)](https://feedzaios.ci.cloudbees.com/job/fos-r/)
+
+[![CloudbeesDevCloud](http://www.cloudbees.com/sites/default/files/Button-Built-on-CB-1.png)](http://www.cloudbees.com/dev)
 
 ## Why FOS
 
