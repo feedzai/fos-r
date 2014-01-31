@@ -67,14 +67,14 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
 
         <!-- R -->
         <dependency>
-            <groupId>org.rosuda</groupId>
-            <artifactId>RserveEngine</artifactId>
-            <version>1.7.0</version>
+            <groupId>org.nuiton.thirdparty</groupId>
+            <artifactId>Rserve</artifactId>
+            <version>0.6-1</version>
         </dependency>
         <dependency>
-            <groupId>org.rosuda</groupId>
+            <groupId>org.nuiton.thirdparty</groupId>
             <artifactId>REngine</artifactId>
-            <version>1.7.0</version>
+            <version>0.6-1</version>
         </dependency>
 
 
