@@ -26,7 +26,7 @@ You need:
 1. [Java SDK]: Java 7
 1. [Maven]: Tested with maven 3.0.X
 1. [fos-core]
-1. [R]: Tested against R 2.15
+1. [R]: Tested against R 2.15 on Linux (Tested on debian, centos, ubuntu)
 1. Access to maven central repo (or a local proxy)
 
 
@@ -64,20 +64,18 @@ mvn clean install
 
 This should compile fos-r, ran all the tests and install all modules into your local maven repo.
 
+## Running FOS-R 
 
-## Running FOS
+The default FOS-R package uses [fos-weka]. You need to set `fos.factoryName` in fos.properties like this:
 
-
-## FAQ
-
-### Weka is great but i need to support another library. How can I do it?
-fos-core does not provide any concrete implementation. You may want to peek at fos-impl-dummy module in [fos-core].
-After you've familiarized with the API (Manager, ManagerFactory and Scorer) you can take a peek at a real implementation,
-say [fos-weka].
+```
+fos.factoryName=com.feedzai.fos.impl.r.RManagerFactory
+```
 
 [Kryo]: https://github.com/EsotericSoftware/kryo
 [fos-r]: https://github.com/feedzai/fos-r
 [fos-core]: https://github.com/feedzai/fos-core
+[fos-weka]: https://github.com/feedzai/fos-weka
 [Weka]: http://www.cs.waikato.ac.nz/ml/weka/
 [R]: http://www.r-project.org/
 [Maven]: http://maven.apache.org/
