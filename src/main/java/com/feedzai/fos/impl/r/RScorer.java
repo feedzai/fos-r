@@ -79,23 +79,6 @@ public class RScorer implements Scorer {
         this.rserve = rserve;
     }
 
-    /**
-     * Create a RScorer instance loading custom libraries
-     *
-     * @param rserve Backing rserve process
-     * @param rlibraries Libraries that will be loaded prior to generating the scoring function
-     *
-     * @throws FOSException If unable to add the relevant libraries
-     */
-    public RScorer(FosRserve rserve, String[] rlibraries) throws FOSException {
-        this(rserve);
-        for (String library : rlibraries) {
-            rserve.eval("library(" + library  + ")");
-        }
-    }
-
-
-
     @Override
     public List<double[]> score(List<UUID> modelIds, Object[] scorables) throws FOSException {
         List<double[]> scores = new ArrayList<>();
@@ -123,7 +106,7 @@ public class RScorer implements Scorer {
      * Generate the scoring vector in the correct format by quoting strings.
      * All other values will be printed as is
      * @param scorable scorable to be appended
-     * @param sb String buffer that contain the genreated string
+     * @param sb String buffer that contain the generated string
      */
     private void appendValue(Object scorable, StringBuilder sb) {
         if (scorable instanceof String) {
@@ -199,14 +182,7 @@ public class RScorer implements Scorer {
         // Remove class from attribute list
         attrs.remove(config.getIntProperty(RModelConfig.CLASS_INDEX));
 
-        List<String> attrNames = fosAttributes2Rnames(attrs);
-
-
-
-        rserve.assignStringList("attributes", rEnvironment, attrNames);
-        List<CategoricalAttribute> categoricals = extractCategoricals(attrs);
-
-        StringBuilder sb = generateScoringFunction(rEnvironment, attrs, categoricals);
+        StringBuilder sb = generateScoringFunction(rEnvironment, attrs, rModelConfig);
 
         rserve.eval(sb.toString());
 
@@ -222,9 +198,9 @@ public class RScorer implements Scorer {
      *
      * Sample environment specific scoring function
      * <pre>
-     * 38c6beb6d82349eabf8159c4c15b7344$score <- function(v) {
+     * x81b495fdc00944dab01afcf03c85a04e$score <- function(v) {
      *    v <- as.data.frame(t(as.matrix(v)))
-     *    names(v) <- x38c6beb6d82349eabf8159c4c15b7344$attributes
+     *    names(v) <- c('A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15')
      *
      *    num_range <- c(2,3,8,11,14,15)
      *    v[, num_range] <- sapply(v[, num_range], as.numeric)
@@ -232,34 +208,43 @@ public class RScorer implements Scorer {
      *    factor_range <- c(1,4,5,6,7,9,10,12,13)
      *    v[, factor_range] <- sapply(v[, factor_range], as.factor)
      *
-     *    v['A1'] <- factor(v['A1'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A1)
-     *    v['A4'] <- factor(v['A4'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A4)
-     *    v['A5'] <- factor(v['A5'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A5)
-     *    v['A6'] <- factor(v['A6'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A6)
-     *    v['A7'] <- factor(v['A7'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A7)
-     *    v['A9'] <- factor(v['A9'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A9)
-     *    v['A10'] <- factor(v['A10'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A10)
-     *    v['A12'] <- factor(v['A12'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A12)
-     *    v['A13'] <- factor(v['A13'], levels = x38c6beb6d82349eabf8159c4c15b7344$model$forest$xlevels$A13)
+     *    v['A1'] <- factor(v['A1'], levels = c('a', 'b'))
+     *    v['A4'] <- factor(v['A4'], levels = c('l', 'u', 'y'))
+     *    v['A5'] <- factor(v['A5'], levels = c('g', 'gg', 'p'))
+     *    v['A6'] <- factor(v['A6'], levels = c('aa', 'c', 'cc', 'd', 'e', 'ff', 'i', 'j', 'k', 'm', 'q', 'r', 'w', 'x'))
+     *    v['A7'] <- factor(v['A7'], levels = c('bb', 'dd', 'ff', 'h', 'j', 'n', 'o', 'v', 'z'))
+     *    v['A9'] <- factor(v['A9'], levels = c('f', 't'))
+     *    v['A10'] <- factor(v['A10'], levels = c('f', 't'))
+     *    v['A12'] <- factor(v['A12'], levels = c('f', 't'))
+     *    v['A13'] <- factor(v['A13'], levels = c('g', 'p', 's'))
      *
      *
-     *    r <- predict(get(x38c6beb6d82349eabf8159c4c15b7344$modelname, envir=x38c6beb6d82349eabf8159c4c15b7344), v, type ="prob")
-     *    r
-     * }
+     *    r <- predict(get(x81b495fdc00944dab01afcf03c85a04e$modelname, envir=x81b495fdc00944dab01afcf03c85a04e), v, type = 'raw')
+     *}
      * </pre>
+     *
      * @param rEnvironment environment code
      * @param attrs  Fos model attribute list
-     * @param categoricals Categorical attributes
+     * @param rModelConfig  R model configuration
      * @return buffer where the R code will be generated
      */
-    private StringBuilder generateScoringFunction(String rEnvironment, List<Attribute> attrs, List<CategoricalAttribute> categoricals) throws FOSException {
+    private StringBuilder generateScoringFunction(String rEnvironment, List<Attribute> attrs, RModelConfig rModelConfig) throws FOSException {
         StringBuilder sb = new StringBuilder();
         // Generate scoring function preamble
+
+        List<String> attrnames = Lists.transform(attrs, new Function<Attribute, String>() {
+            @Override
+            public String apply(Attribute input) {
+                return rVariableName(input.getName());
+            }
+        });
+
         sb.append(String.format(
                 "%1$s$score <- function(v) {\n" +
                 "   v <- as.data.frame(t(as.matrix(v)))\n" +
-                "   names(v) <- %1$s$attributes\n\n",
-                rEnvironment));
+                "   names(v) <- c('%2$s')\n\n",
+                rEnvironment,
+                Joiner.on("', '").join(attrnames)));
 
         List<Integer> numeric_indices = new ArrayList<>();
         List<Integer> factor_indices = new ArrayList<>();
@@ -280,13 +265,28 @@ public class RScorer implements Scorer {
 
         generateFactorConversion(factor_indices, sb);
 
+        List<CategoricalAttribute> categoricals = extractCategoricals(attrs);
+
+
         generateLevelFactorConversion(rEnvironment, categoricals, sb);
+
+        String predictArguments = rModelConfig.getModelConfig().getProperty(RModelConfig.PREDICT_FUNCTION_ARGUMENTS);
 
         sb.append(String.format(
                 "\n\n" +
-                "r <- predict(get(%1$s$modelname, envir=%1s), v, type =\"prob\")\n" +
-                "r\n}",
-                rEnvironment));
+                "r <- predict(get(%1$s$modelname, envir=%1$s), v%2$s)\n",
+                rEnvironment,
+                predictArguments != null ? ", " + predictArguments : ""));
+
+        String resultsTransform = rModelConfig.getModelConfig().getProperty(RModelConfig.PREDICT_RESULT_TRANSFORM);
+
+        if(resultsTransform != null) {
+            sb.append(resultsTransform + "\n");
+            sb.append("r\n");
+        }
+
+        sb.append("}");
+
         return sb;
     }
 
@@ -319,10 +319,12 @@ public class RScorer implements Scorer {
      */
     private void generateLevelFactorConversion(String rEnvironment, List<CategoricalAttribute> categoricals, StringBuilder sb) {
         for (CategoricalAttribute categoricalAttribute : categoricals) {
+            List<String> factors = new ArrayList<>(categoricalAttribute.getCategoricalInstances());
+            factors.remove(categoricalAttribute.getUnknownReplacementIndex());
             sb.append(String.format(
-                    "   v['%1$s'] <- factor(v['%1$s'], levels = %2$s$model$forest$xlevels$%1$s)\n",
+                    "   v['%1$s'] <- factor(v['%1$s'], levels = c('%2$s'))\n",
                     categoricalAttribute.getName(),
-                    rEnvironment));
+                    Joiner.on("', '").join(factors)));
 
         }
     }
@@ -380,19 +382,12 @@ public class RScorer implements Scorer {
     }
 
     /**
-     * Fos variable names must not start with a number,
-     * therefore a "X" caracter is preprended to their name
-     * @param attrs FOS attribute list
-     * @return String with the R varible names
+     * Append a "X" to variable names if attributes names start with a numbner
+     * @param original original variable name
+     * @return valid r variable name
      */
-    static List<String> fosAttributes2Rnames(List<? extends Attribute> attrs) {
-        return Lists.transform(attrs, new Function<Attribute, String>() {
-            @Override
-            public String apply(Attribute input) {
-                String name = input.getName();
-                return Character.isDigit(name.charAt(0)) ? "X" + name : name;
-            }
-        });
+    public static String rVariableName(String original) {
+        return Character.isDigit(original.charAt(0)) ? "X" + original : original;
     }
 
     /**

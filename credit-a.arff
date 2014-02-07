@@ -31,7 +31,7 @@
 %     A1:	b, a.
 %     A2:	continuous.
 %     A3:	continuous.
-%     A4:	u, y, l, t.
+%     A4:	u, y, l.
 %     A5:	g, p, gg.
 %     A6:	c, d, cc, i, j, k, m, r, q, w, x, e, aa, ff.
 %     A7:	v, h, bb, j, n, z, dd, ff, o.
@@ -64,10 +64,10 @@
 
 @relation credit-rating
 
-@attribute A2		REAL
 @attribute A1		{b,a}
+@attribute A2		REAL
 @attribute A3		REAL
-@attribute A4		{u, y, l, t}
+@attribute A4		{u, y, l}
 @attribute A5		{g, p, gg}
 @attribute A6		{c, d, cc, i, j, k, m, r, q, w, x, e, aa, ff}
 @attribute A7		{v, h, bb, j, n, z, dd, ff, o}
@@ -780,6 +780,3 @@ a,22.67,0.75,u,g,c,v,2,f,t,02,t,g,00200,394,-
 a,25.25,13.5,y,p,ff,ff,2,f,t,01,t,g,00200,1,-
 b,17.92,0.205,u,g,aa,v,0.04,f,f,0,f,g,00280,750,-
 b,35.00,3.375,u,g,c,h,8.29,f,f,0,t,g,00000,0,-
-%
-%
-%

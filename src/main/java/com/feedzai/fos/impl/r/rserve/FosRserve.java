@@ -24,11 +24,10 @@
 package com.feedzai.fos.impl.r.rserve;
 
 import com.feedzai.fos.api.FOSException;
+import com.feedzai.fos.impl.r.RScorer;
 import com.google.common.io.Files;
 import org.apache.commons.io.Charsets;
 import org.rosuda.REngine.REXP;
-import org.rosuda.REngine.REXPMismatchException;
-import org.rosuda.REngine.REngineException;
 import org.rosuda.REngine.Rserve.RConnection;
 import org.rosuda.REngine.Rserve.RserveException;
 import org.slf4j.Logger;
@@ -45,10 +44,10 @@ import java.util.List;
  *
  * A previously running RServe process must be running before using this package
  *
- * To install Rserve open a command line, start R and type <code>install.packages("Rserve")</code>.
+ * To install Rserve open a command line, start R and type {@code install.packages(\"Rserve\")}.
  *
  * After Rserve has been installed sucessfully, start a rserve daemon using the following command line
- * <code>R --no-save --slave -e "library(Rserve);Rserve(args='--no-save --slave');"</code>
+ * {@code R --no-save --slave -e "library(Rserve);Rserve(args='--no-save --slave');"}
  *
  *
  * @author rafael.marmelo
@@ -72,7 +71,6 @@ public class FosRserve implements FosRServeAPI {
             throw new FOSException(e);
         }
     }
-
 
 
     @Override
@@ -122,15 +120,10 @@ public class FosRserve implements FosRServeAPI {
             } else if (result.isNumeric()) {
                 return (T) new Double(result.asDouble());
             } else if (result.isString()) {
-                return (T) new String(result.asString());
+                return (T) result.asString();
             }
-
-
-
             return null;
-        } catch (REngineException e) {
-            throw new FOSException("Error executing R script.", e);
-        } catch (REXPMismatchException e) {
+        } catch (Exception e) {
             throw new FOSException("Error executing R script.", e);
         }
     }
@@ -164,9 +157,8 @@ public class FosRserve implements FosRServeAPI {
 
         sb.append(rEnvironment)
           .append('$')
-          .append(varname)
+          .append(RScorer.rVariableName(varname))
           .append(" <- c(\n");
-        boolean addComma = false;
 
         int i = 0;
         while(i < values.size() - 1) {
@@ -186,7 +178,6 @@ public class FosRserve implements FosRServeAPI {
                 .append('$')
                 .append(varname)
                 .append(" <- c(\n");
-        boolean addComma = false;
 
         int i = 0;
         while(i < values.size() - 1) {

@@ -32,7 +32,6 @@ import com.feedzai.fos.impl.r.rserve.FosRserve;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.io.Files;
-import com.google.common.io.Resources;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +40,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
+import static com.feedzai.fos.impl.r.RScorer.rVariableName;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -207,7 +203,7 @@ public class RManager implements Manager {
     @Override
     public synchronized UUID trainAndAdd(ModelConfig config,List<Object[]> instances) throws FOSException {
         try {
-            File instanceFile = writeInstancesToTempFile(instances);
+            File instanceFile = writeInstancesToTempFile(instances, config.getAttributes());
             config.setProperty(RModelConfig.MODEL_SAVE_PATH, instanceFile.getParent());
             trainFile(config, instanceFile.getAbsolutePath());
 
@@ -224,9 +220,30 @@ public class RManager implements Manager {
      * @return Temporary file with the dumped training instances
      * @throws IOException
      */
-    private File writeInstancesToTempFile(List<Object[]> instances) throws IOException {
-        File instanceFile = File.createTempFile("fosrtraining", ".instances");
+    private File writeInstancesToTempFile(List<Object[]> instances, List<Attribute> attributeList) throws IOException {
+        File instanceFile = File.createTempFile("fosrtraining", ".arff");
+
         PrintWriter pw = new PrintWriter(new FileOutputStream(instanceFile));
+
+        pw.println("% FOS generated ARFF file");
+        pw.println("@relation fosrelation");
+        pw.println("");
+
+        for(Attribute attribute : attributeList) {
+            pw.print("@attribute " + rVariableName(attribute.getName()) + " ");
+            if(attribute instanceof NumericAttribute) {
+                pw.println("REAL");
+            } else if( attribute instanceof  CategoricalAttribute ) {
+                CategoricalAttribute cat = (CategoricalAttribute) attribute;
+                List<String> values = new ArrayList(cat.getCategoricalInstances());
+                values.remove(cat.getUnknownReplacementIndex());
+                pw.print("{ '");
+                pw.print(Joiner.on("', '").join(values));
+                pw.println("'}");
+            }
+        }
+        pw.println();
+        pw.println("@data");
         // Dump instances to file
         for (Object[] instance : instances) {
             pw.println(Joiner.on(',').join(instance));
@@ -245,7 +262,7 @@ public class RManager implements Manager {
     @Override
     public byte[] train(ModelConfig config,List<Object[]> instances) throws FOSException {
         try {
-            File instanceFile = writeInstancesToTempFile(instances);
+            File instanceFile = writeInstancesToTempFile(instances, config.getAttributes());
             return trainFile(config, instanceFile.getAbsolutePath());
         } catch (IOException e) {
             throw new FOSException(e);
@@ -288,54 +305,48 @@ public class RManager implements Manager {
     public byte[] trainFile(ModelConfig config, String path) throws FOSException {
         String trainFile = config.getProperty(RModelConfig.TRAIN_FILE);
         String trainFunction = config.getProperty(RModelConfig.TRAIN_FUNCTION);
-        String trainScript;
+        if (trainFunction == null) {
+               trainFunction = RModelConfig.BUILT_IN_TRAIN_FUNCTION;
+        }
+
+        String trainArguments = config.getProperty(RModelConfig.TRAIN_FUNCTION_ARGUMENTS);
+        String trainScript = null;
 
         try {
-            if (trainFile == null)  {
-                trainFunction  = RModelConfig.BUILT_IN_RANDOM_FOREST_TRAIN_FUNCTION;
-                URL url = Resources.getResource(RModelConfig.BUILT_IN_RANDOM_FOREST_TRAIN);
-                trainScript = Resources.toString(url, Charsets.UTF_8);
-            } else {
+            if (trainFile != null)  {
                 trainScript = Files.toString(new File(trainFile), Charsets.UTF_8);
             }
 
+            String libraries = config.getProperty(RModelConfig.LIBRARIES);
+            for(String library : libraries.trim().split(",")) {
+                library = library.trim();
+                if(library.length() > 0) {
+                    rserve.eval(String.format("require(%1s)", library));
+                }
+            }
 
-            rserve.eval(trainScript);
+            // eval optional train script
+            if(trainScript != null) {
+                rserve.eval(trainScript);
+            }
 
             List<Attribute> attributes = config.getAttributes();
 
-            StringBuilder sb = new StringBuilder();
-
-            List<String> rnames = RScorer.fosAttributes2Rnames(attributes);
-
-            Joiner.on(',').appendTo(sb, rnames);
-
             File modelSaveFile = new File(config.getProperty(RModelConfig.MODEL_SAVE_PATH),
                                          (new File(path).getName()) + ".model");
+
             config.setProperty(RModelConfig.MODEL_FILE, modelSaveFile.getAbsolutePath());
-            String headerFileName = path + ".header";
-            Files.write(sb, new File(headerFileName), Charsets.UTF_8);
 
-            rserve.eval(String.format(
-                    "headersfile <- '%1$s'\n" +   // define file path with the column descriptions
-                    "instancesfile <- '%2$s'\n" +  // define file path with training instances
-                    "class.name <- '%3$s'\n",  // define the name of the attribute that contains the training class
-                    headerFileName,
-                    path,
-                    attributes.get(config.getIntProperty(RModelConfig.CLASS_INDEX)).getName()));
-            
+            Attribute modelClass = attributes.get(config.getIntProperty(RModelConfig.CLASS_INDEX));
 
+            // load training data
+            rserve.eval(String.format("train.data <- read.arff('%s')", path));
+            rserve.eval(String.format("classfn <- as.formula('%s ~ .')", rVariableName(modelClass.getName())));
+            rserve.eval(String.format("model <- %s(formula = classfn, data = train.data%s)",
+                                      trainFunction,
+                                      trainArguments != null ? ", " + trainArguments : ""));
 
-            List<CategoricalAttribute> categoricals = RScorer.extractCategoricals(attributes);
-
-            List<String> categoricalNames = RScorer.fosAttributes2Rnames(categoricals);
-
-            defineCategoricals(categoricalNames);
-
-            // define file path that will contained the trained model
-            rserve.eval(String.format("modelsavepath <- '%1s'", modelSaveFile.getAbsolutePath()));
-
-            rserve.eval(trainFunction);
+            rserve.eval(String.format("save(model, file = '%1s')", modelSaveFile.getAbsolutePath()));
 
             return Files.toByteArray(modelSaveFile);
 
@@ -343,32 +354,6 @@ public class RManager implements Manager {
             throw new FOSException(e);
         }
 
-    }
-
-    /**
-     * Generate a variable with all the categorical fields
-     * that will be later used during training
-     *
-     * @param categoricalNames list with the categorical field names
-     * @throws FOSException if the generated code is invalid
-     */
-    private void defineCategoricals(List<String> categoricalNames) throws FOSException {
-        // define the categorical fields
-        StringBuilder setCategoricals = new StringBuilder();
-        setCategoricals.append("categorical.features <- c(\n" );
-
-        int i = 0;
-        for(; i < categoricalNames.size() - 1; ++i) {
-            setCategoricals.append("     '")
-                           .append(categoricalNames.get(i))
-                           .append("', \n");
-        }
-
-        setCategoricals.append("     '")
-                       .append(categoricalNames.get(i))
-                       .append("')");
-
-        rserve.eval(setCategoricals.toString());
     }
 
     /**

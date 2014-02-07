@@ -76,19 +76,29 @@ public class RModelConfig {
      */
     public static final String MODEL_FILE =  "model";
 
-
-    // End of configuration keys constants
+    /**
+     * This key will contain optional training function arguments
+     */
+    public static final String TRAIN_FUNCTION_ARGUMENTS = "train.function.arguments";
 
 
     /**
-     * Builtin R training code
+     * This key will contain optional arguments to the predict function
      */
-    public static final String BUILT_IN_RANDOM_FOREST_TRAIN = "rtraining/training.R";
+    public static final String PREDICT_FUNCTION_ARGUMENTS = "predict.function.arguments";
+
+
+    /**
+     * Predict transform function
+     */
+    public static final String PREDICT_RESULT_TRANSFORM = "predict.result.transform";
+
+    // End of configuration keys constants
 
     /**
      * Builtin Random forest train function
      */
-    public static final String BUILT_IN_RANDOM_FOREST_TRAIN_FUNCTION = "trainRmodel()";
+    public static final String BUILT_IN_TRAIN_FUNCTION = "svm";
 
     /**
      * Fos model configuration. Contains the attribute definitions and classifier index.
@@ -118,13 +128,13 @@ public class RModelConfig {
     private UUID id;
 
     /**
-     * Creates a new model from the given <code>ModelConfig</code> and <code>RManagerConfig</code>.
+     * Creates a new model from the given {@code ModelConfig} and {@code RManagerConfig}.
      * <p/>
-     * From the <code>ModelConfig.properties</code> the parameters <code>MODEL_FILE</code>, <code>ID</code> and <code>CLASS_INDEX</code> are looked up.
-     * If the <code>CLASS_INDEX</code> doesn't exist int he <code>ModelConfig</code>, the default value is used from <code>RManagerConfig</code>.
+     * From the {@code ModelConfig.properties} the parameters {@code MODEL_FILE}, {@code ID} and {@code CLASS_INDEX} are looked up.
+     * If the {@code CLASS_INDEX} doesn't exist int he {@code ModelConfig}, the default value is used from {@code RManagerConfig}.
      *
-     * @param modelConfig       the configuration with <code>MODEL_FILE</code>, <code>ID</code> and <code>CLASS_INDEX</code>
-     * @param rManagerConfig the configuration with the default <code>CLASS_INDEX</code>
+     * @param modelConfig       the configuration with {@code MODEL_FILE}, {@code ID} and {@code CLASS_INDEX}
+     * @param rManagerConfig the configuration with the default {@code CLASS_INDEX}
      */
     public RModelConfig(ModelConfig modelConfig, RManagerConfig rManagerConfig) throws FOSException {
         checkNotNull(modelConfig, "Model configuration cannot be null");
@@ -207,7 +217,7 @@ public class RModelConfig {
 
 
     /**
-     * Updates the underlying <code>ModelConfig</code> using <code>ModelConfig.update</code>.
+     * Updates the underlying {@code ModelConfig} using {@code ModelConfig.update}.
      *
      * @param modelConfig the model config with the new settings
      */
