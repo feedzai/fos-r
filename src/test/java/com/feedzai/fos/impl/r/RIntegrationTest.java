@@ -183,22 +183,22 @@ public class RIntegrationTest {
     static List<Attribute> getAttributes() {
 
         String[][] attrs = {
-                {"A1", "b","a"},
-                {"A2"},
-                {"A3"},
-                {"A4", "u", "y", "l"},
-                {"A5", "g", "p", "gg"},
-                {"A6", "c", "d", "cc", "i", "j", "k", "m", "r", "q", "w", "x", "e", "aa", "ff"},
-                {"A7", "v", "h", "bb", "j", "n", "z", "dd", "ff", "o"},
-                {"A8"},
-                {"A9", "t", "f"},
+                {"A01", "b","a"},
+                {"A02"},
+                {"A03"},
+                {"A04", "u", "y", "l"},
+                {"A05", "g", "p", "gg"},
+                {"A06", "c", "d", "cc", "i", "j", "k", "m", "r", "q", "w", "x", "e", "aa", "ff"},
+                {"A07", "v", "h", "bb", "j", "n", "z", "dd", "ff", "o"},
+                {"A08"},
+                {"A09", "t", "f"},
                 {"A10", "t", "f"},
                 {"A11"},
                 {"A12", "t", "f"},
                 {"A13", "g", "p", "s"},
                 {"A14"},
                 {"A15"},
-                {"class", "+", "-"}
+                {"fraud", "0", "1"}
         };
 
         List<Attribute> attributes = new ArrayList<>();
