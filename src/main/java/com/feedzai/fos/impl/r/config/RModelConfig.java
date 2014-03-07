@@ -27,9 +27,11 @@ import com.feedzai.fos.api.Attribute;
 import com.feedzai.fos.api.FOSException;
 import com.feedzai.fos.api.ModelConfig;
 import com.feedzai.fos.common.validation.NotNull;
+import com.google.common.collect.ImmutableSet;
 
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -77,10 +79,14 @@ public class RModelConfig {
     public static final String MODEL_FILE =  "model";
 
     /**
+     * This key will contain the path to the saved PMML file.
+     */
+    public static final String PMML_FILE = "pmml";
+
+    /**
      * This key will contain optional training function arguments
      */
     public static final String TRAIN_FUNCTION_ARGUMENTS = "train.function.arguments";
-
 
     /**
      * This key will contain optional arguments to the predict function
@@ -99,6 +105,16 @@ public class RModelConfig {
      * Builtin Random forest train function
      */
     public static final String BUILT_IN_TRAIN_FUNCTION = "svm";
+
+    /**
+     * Extension for generated PMML files.
+     */
+    public static final String PMML_FILE_EXTENSION = "pmml";
+
+    /**
+     * Extension for generated model files.
+     */
+    public static final String MODEL_FILE_EXTENSION = "model";
 
     /**
      * Fos model configuration. Contains the attribute definitions and classifier index.
@@ -203,6 +219,22 @@ public class RModelConfig {
         this.model = model;
 
         this.modelConfig.setProperty(MODEL_FILE, model.getAbsolutePath());
+        this.modelConfig.setProperty(PMML_FILE, model.getAbsolutePath() + "." + PMML_FILE_EXTENSION);
+    }
+
+    /**
+     * Retrieves the PMML {@link File} location.
+     *
+     * @return The PMML file location.
+     */
+    public File getPMMLModel() {
+        try {
+            return new File(modelConfig.getProperty(PMML_FILE));
+        } catch (FOSException e) {
+            String path = model.getAbsolutePath() + "." + PMML_FILE_EXTENSION;
+            this.modelConfig.setProperty(PMML_FILE, path);
+            return new File(path);
+        }
     }
 
     /**

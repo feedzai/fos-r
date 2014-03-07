@@ -31,8 +31,8 @@ import com.feedzai.fos.impl.r.config.RModelConfig;
 import com.feedzai.fos.impl.r.rserve.FosRserve;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +41,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.zip.GZIPOutputStream;
 
 import static com.feedzai.fos.impl.r.RScorer.rVariableName;
+
+import static com.feedzai.fos.api.util.ManagerUtils.createModelFile;
+import static com.feedzai.fos.api.util.ManagerUtils.getUuid;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -66,6 +70,11 @@ public class RManager implements Manager {
     /** Reference for an R scorer */
     private RScorer rScorer;
 
+    /**
+     * Default libraries for the R server.
+     */
+    private final Set<String> defaultLibraries = ImmutableSet.of("pmml");
+
 
     /**
      * Create a new manager from the given configuration.
@@ -80,29 +89,19 @@ public class RManager implements Manager {
         this.rManagerConfig = rManagerConfig;
         this.rserve = new FosRserve();
 
-        this.rScorer = new RScorer(rserve);
-    }
-
-    /**
-     * Persists the model to disk.
-     *
-     * @param id    the id of the model
-     * @param model the serialized classifier
-     * @return the File where the model was written
-     * @throws java.io.IOException if saving to disk was not possible
-     */
-    private File createModelFile(UUID id,byte[] model) throws IOException {
-        File file = File.createTempFile(id.toString(), ".model", modelConfigs.get(id).getModel());
-        FileUtils.writeByteArrayToFile(file, model);
-        return file;
+        this.rScorer = new RScorer(rserve, defaultLibraries.toArray(new String[]{}));
     }
 
     @Override
-    public synchronized UUID addModel(ModelConfig config,byte[] model) throws FOSException {
+    public synchronized UUID addModel(ModelConfig config, Model model) throws FOSException {
+        if (!(model instanceof ModelBinary)) {
+            throw new FOSException("Currently FOS-R only supports binary models.");
+        }
+
         try {
             UUID uuid = getUuid(config);
 
-            File file = createModelFile(uuid, model);
+            File file = createModelFile(modelConfigs.get(uuid).getModel(), uuid, model);
 
             RModelConfig rModelConfig = new RModelConfig(config, rManagerConfig);
             rModelConfig.setId(uuid);
@@ -118,30 +117,17 @@ public class RManager implements Manager {
         }
     }
 
-    /**
-     * Obtain model UUID from ModelConfig if defined or generate a new random uuid
-     * @param config Model Configuration
-     * @return new Model UUID
-     * @throws FOSException
-     */
-    private UUID getUuid(ModelConfig config) throws FOSException {
-        String suuid = config.getProperty("UUID");
-        UUID uuid;
-        if (suuid == null) {
-            uuid = UUID.randomUUID();
-        } else {
-            uuid = UUID.fromString(suuid);
-        }
-        return uuid;
-    }
-
     @Override
-    public synchronized UUID addModel(ModelConfig config, @NotBlank String localFileName) throws FOSException {
+    public synchronized UUID addModel(ModelConfig config, @NotBlank ModelDescriptor descriptor) throws FOSException {
+        if (descriptor.getFormat() != ModelDescriptor.Format.BINARY) {
+            throw new FOSException("Currently FOS-R only supports binary models.");
+        }
+
         UUID uuid = getUuid(config);
 
         RModelConfig rModelConfig = new RModelConfig(config, rManagerConfig);
         rModelConfig.setId(uuid);
-        rModelConfig.setModel(new File(localFileName));
+        rModelConfig.setModel(new File(descriptor.getModelFilePath()));
 
         modelConfigs.put(uuid, rModelConfig);
         rScorer.addOrUpdate(rModelConfig);
@@ -157,10 +143,11 @@ public class RManager implements Manager {
         // delete the header & model  file (or else it will be picked up on the next restart)
         rModelConfig.getHeader().delete();
         rModelConfig.getModel().delete();
+        rModelConfig.getPMMLModel().delete();
     }
 
     @Override
-    public synchronized void reconfigureModel(UUID modelId,ModelConfig modelConfig) throws FOSException {
+    public synchronized void reconfigureModel(UUID modelId, ModelConfig modelConfig) throws FOSException {
         RModelConfig rModelConfig = this.modelConfigs.get(modelId);
         rModelConfig.update(modelConfig);
 
@@ -168,13 +155,17 @@ public class RManager implements Manager {
     }
 
     @Override
-    public synchronized void reconfigureModel(UUID modelId,ModelConfig modelConfig,byte[] model) throws FOSException {
-        throw new FOSException("Not implemented for R");
+    public synchronized void reconfigureModel(UUID modelId, ModelConfig modelConfig, Model model) throws FOSException {
+        throw new FOSException("Model reconfiguration not yet supported for R");
     }
 
     @Override
-    public synchronized void reconfigureModel(UUID modelId,ModelConfig modelConfig, @NotBlank String localFileName) throws FOSException {
-        File file = new File(localFileName);
+    public synchronized void reconfigureModel(UUID modelId,ModelConfig modelConfig, @NotBlank ModelDescriptor descriptor) throws FOSException {
+        if (descriptor.getFormat() != ModelDescriptor.Format.BINARY) {
+            throw new FOSException("Currently FOS-R only supports binary models.");
+        }
+
+        File file = new File(descriptor.getModelFilePath());
 
         RModelConfig rModelConfig = this.modelConfigs.get(modelId);
         rModelConfig.update(modelConfig);
@@ -201,13 +192,16 @@ public class RManager implements Manager {
     }
 
     @Override
-    public synchronized UUID trainAndAdd(ModelConfig config,List<Object[]> instances) throws FOSException {
+    public synchronized UUID trainAndAdd(ModelConfig config, List<Object[]> instances) throws FOSException {
         try {
             File instanceFile = writeInstancesToTempFile(instances, config.getAttributes());
             config.setProperty(RModelConfig.MODEL_SAVE_PATH, instanceFile.getParent());
             trainFile(config, instanceFile.getAbsolutePath());
 
-            return addModel(config, (new File(instanceFile.getParent(), instanceFile.getName() + ".model").getAbsolutePath()));
+            String trainedModelPath = new File(instanceFile.getParent(), instanceFile.getName() + "." + RModelConfig.MODEL_FILE_EXTENSION).getAbsolutePath();
+            ModelDescriptor trainedModelDescriptor = new ModelDescriptor(ModelDescriptor.Format.BINARY, trainedModelPath);
+
+            return addModel(config, trainedModelDescriptor);
         } catch (IOException e) {
            throw new FOSException(e);
         }
@@ -253,14 +247,17 @@ public class RManager implements Manager {
     }
 
     @Override
-    public synchronized UUID trainAndAddFile(ModelConfig config,String path) throws FOSException {
+    public synchronized UUID trainAndAddFile(ModelConfig config, String path) throws FOSException {
         trainFile(config, path);
-        return addModel(config, path + ".model");
+
+        ModelDescriptor trainedModelDescriptor = new ModelDescriptor(ModelDescriptor.Format.BINARY, path + "." + RModelConfig.MODEL_FILE_EXTENSION);
+
+        return addModel(config, trainedModelDescriptor);
     }
 
 
     @Override
-    public byte[] train(ModelConfig config,List<Object[]> instances) throws FOSException {
+    public Model train(ModelConfig config,List<Object[]> instances) throws FOSException {
         try {
             File instanceFile = writeInstancesToTempFile(instances, config.getAttributes());
             return trainFile(config, instanceFile.getAbsolutePath());
@@ -302,7 +299,7 @@ public class RManager implements Manager {
      * @throws FOSException
      */
     @Override
-    public byte[] trainFile(ModelConfig config, String path) throws FOSException {
+    public Model trainFile(ModelConfig config, String path) throws FOSException {
         String trainFile = config.getProperty(RModelConfig.TRAIN_FILE);
         String trainFunction = config.getProperty(RModelConfig.TRAIN_FUNCTION);
         if (trainFunction == null) {
@@ -333,7 +330,7 @@ public class RManager implements Manager {
             List<Attribute> attributes = config.getAttributes();
 
             File modelSaveFile = new File(config.getProperty(RModelConfig.MODEL_SAVE_PATH),
-                                         (new File(path).getName()) + ".model");
+                                         (new File(path).getName()) + "." + RModelConfig.MODEL_FILE_EXTENSION);
 
             config.setProperty(RModelConfig.MODEL_FILE, modelSaveFile.getAbsolutePath());
 
@@ -348,7 +345,7 @@ public class RManager implements Manager {
 
             rserve.eval(String.format("save(model, file = '%1s')", modelSaveFile.getAbsolutePath()));
 
-            return Files.toByteArray(modelSaveFile);
+            return new ModelBinary(Files.toByteArray(modelSaveFile));
 
         } catch(Throwable e) {
             throw new FOSException(e);
@@ -357,12 +354,19 @@ public class RManager implements Manager {
     }
 
     /**
-     * Will save the configuration to file.
+     * Deletes the temporary PMML file of a model if it exists.
      *
-     * @throws FOSException when there are IO problems writing the configuration to file
+     * @throws FOSException When there are IO problems reading a model's configuration.
      */
     @Override
     public synchronized void close() throws FOSException {
+        for (UUID uuid : modelConfigs.keySet()) {
+            File tempPMMLFile = new File(modelConfigs.get(uuid).getModelConfig().getProperty(RModelConfig.PMML_FILE));
+            if (tempPMMLFile.exists()) {
+                logger.debug("Deleting temporary R PMML file '{}'.", tempPMMLFile.getAbsolutePath());
+                tempPMMLFile.delete();
+            }
+        }
     }
 
     @Override
@@ -375,6 +379,40 @@ public class RManager implements Manager {
             String msg = "Unable to save model " + uuid + " to " + savepath;
             logger.error(msg, e);
             throw new FOSException(msg);
+        }
+    }
+
+    @Override
+    public void saveAsPMML(UUID uuid, String filePath, boolean compress) throws FOSException {
+        if (modelConfigs.containsKey(uuid)) {
+            File source = new File(modelConfigs.get(uuid).getModelConfig().getProperty(RModelConfig.PMML_FILE));
+
+            File target = new File(filePath);
+
+            // If the PMML hasn't already been exported, generate it first.
+            if (!source.exists()) {
+                rserve.eval(rScorer.getSaveAsPMMLFunctionCall(uuid));
+            }
+
+            try {
+                if (compress) {
+                    logger.debug("Copying R PMML file to compressed file '{}'.", target.getAbsolutePath());
+
+                    try (FileOutputStream fos = new FileOutputStream(target);
+                         GZIPOutputStream gos = new GZIPOutputStream(fos)) {
+                        Files.copy(source, gos);
+                    }
+                } else {
+                    logger.debug("Copying R PMML to compressed file '{}'.", target.getAbsolutePath());
+
+                    Files.copy(source, target);
+                }
+            } catch (IOException e) {
+                throw new FOSException("Failed to copy PMML file to destination file '" + filePath + "'.");
+            }
+
+        } else {
+            throw new FOSException("Unknown model with UUID " + uuid);
         }
     }
 }

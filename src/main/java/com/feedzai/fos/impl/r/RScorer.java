@@ -51,9 +51,14 @@ public class RScorer implements Scorer {
     private static final Logger logger = LoggerFactory.getLogger(RScorer.class);
 
     /**
+     * The prefix for the saveAsPMML function. It will be prefixed with the model's uuid.
+     */
+    private static final String SAVE_AS_PMML_FUNCTION_PREFIX = "saveAsPMML";
+
+    /**
      * Reference to the backing RServe daemon
      */
-    private FosRserve rserve;
+    private final FosRserve rserve;
 
     /**
      * Set with all the configured models
@@ -79,6 +84,23 @@ public class RScorer implements Scorer {
         this.rserve = rserve;
     }
 
+    /**
+     * Create a RScorer instance loading custom libraries
+     *
+     * @param rserve Backing rserve process
+     * @param rlibraries Libraries that will be loaded prior to generating the scoring function
+     *
+     * @throws FOSException If unable to add the relevant libraries
+     */
+    public RScorer(FosRserve rserve, String... rlibraries) throws FOSException {
+        checkNotNull(rserve, "Manager config cannot be null");
+        this.rserve = rserve;
+
+        for (String library : rlibraries) {
+            rserve.eval("library(" + library  + ")");
+        }
+    }
+
     @Override
     public List<double[]> score(List<UUID> modelIds, Object[] scorables) throws FOSException {
         List<double[]> scores = new ArrayList<>();
@@ -96,7 +118,6 @@ public class RScorer implements Scorer {
 
             double[] result = rserve.eval(sb.toString());
             scores.add(result);
-
         }
 
         return scores;
@@ -145,9 +166,8 @@ public class RScorer implements Scorer {
         List<double[]> scores = new ArrayList<>(scorables.size());
 
         for (Object[] scorable : scorables) {
-            score(ImmutableList.of(modelId), scorable);
+            scores.addAll(score(ImmutableList.of(modelId), scorable));
         }
-
 
         return scores;
     }
@@ -158,9 +178,6 @@ public class RScorer implements Scorer {
      * @throws FOSException Thrown on invalid configuration
      */
     public void addOrUpdate(RModelConfig rModelConfig) throws FOSException {
-        if (rserve != null) {
-            rserve = new FosRserve();
-        }
         String rEnvironment = uuid2environment(rModelConfig.getId());
 
         String libraries = rModelConfig.getModelConfig().getProperty(RModelConfig.LIBRARIES);
@@ -186,6 +203,9 @@ public class RScorer implements Scorer {
 
         rserve.eval(sb.toString());
 
+        // Generate a function to save the model to PMML and add it to the environment.
+        String saveAsPMMLFunction = generateSaveAsPMMLFunction(rEnvironment, rModelConfig.getPMMLModel().getAbsolutePath(), rModelConfig.getModelConfig().getIntProperty(rModelConfig.CLASS_INDEX));
+        rserve.eval(saveAsPMMLFunction);
     }
 
     /**
@@ -362,6 +382,44 @@ public class RScorer implements Scorer {
         Joiner.on(',').appendTo(sb, indices);
         sb.append(")\n");
         sb.append("   v[, num_range] <- sapply(v[, num_range], as.numeric)\n\n");
+    }
+
+    /**
+     * Generates a new function that saves a model as PMML file.
+     *
+     * @param rEnvironment The environment code.
+     * @param saveFilePath The absolute path to the file where the model will be saved.
+     * @return The function code.
+     */
+    private String generateSaveAsPMMLFunction(String rEnvironment, String saveFilePath, int classIndex) {
+        // Major hack to get the actual class index in an R PMML.
+        // R's pmml package doesn't honor the trained class index, and always places it
+        // as the first element of the data dictionary. Because the package is very
+        // limited in its configuration, we've placed the class index in the Application tag
+        // <Application name="FOS-R/classIndex=2">.
+        // This is very, very ugly, but couldn't find a better solution
+        String pmmlApplication =  String.format("\"FOS-R/classindex=%d\"", classIndex);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(SAVE_AS_PMML_FUNCTION_PREFIX).append(String.format("%1$s <- function() {\n", rEnvironment));
+        sb.append("cat(\"Exporting model to PMML.\\n\")\n");
+        sb.append(String.format("modelPMML <- pmml(get(%1$s$modelname, envir=%1s), app.name=%s)\n", rEnvironment, pmmlApplication));
+        sb.append(String.format("cat(\"Writing PMML to XML file into\", \"%s\", \"\\n\")\n", saveFilePath));
+        sb.append(String.format("saveXML(modelPMML, \"%s\")\n", saveFilePath));
+        sb.append("cat(\"Model export to PMML completed.\\n\")\n");
+        sb.append("}");
+
+        return sb.toString();
+    }
+
+    /**
+     * Retrieves a call to the function that saves the model with the given UUID to PMML.
+     *
+     * @param uuid The UUID of the model to save as PMML.
+     * @return A string with the call to the function.
+     */
+    public String getSaveAsPMMLFunctionCall(UUID uuid) {
+        return SAVE_AS_PMML_FUNCTION_PREFIX + String.format("%1$s()", uuid2environment(uuid));
     }
 
     /**

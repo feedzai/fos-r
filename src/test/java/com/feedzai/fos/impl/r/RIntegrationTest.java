@@ -84,7 +84,7 @@ public class RIntegrationTest {
 
         RManager rManager = new RManager(rManagerConfig);
         rManager.trainFile(modelConfig, getCwd() + "/credit-a.arff");
-        rManager.addModel(modelConfig, getCwd() + "/credit-a.arff.model");
+        rManager.addModel(modelConfig, new ModelDescriptor(ModelDescriptor.Format.BINARY, getCwd() + "/credit-a.arff.model"));
 
 
         Scorer scorer = rManager.getScorer();
@@ -215,7 +215,7 @@ public class RIntegrationTest {
 
 
 
-    private List<Object[]> getTrainingInstances() {
+    public static List<Object[]> getTrainingInstances() {
         Object[][] instances = new Object[][] {
                 {"b",30.83,0,"u","g","w","v",1.25,"t","t",1,"f","g",202,0,"+"},
                 {"a",58.67,4.46,"u","g","q","h",3.04,"t","t",6,"f","g",43,560,"+"},

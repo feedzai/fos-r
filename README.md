@@ -48,6 +48,8 @@ install.packages("foreach")
 install.packages("foreign")
 install.packages("e1071")
 install.packages("kernlab")
+install.packages("XML")
+install.packages("pmml")
 ```
 
 After Rserve has been installed successfully, start a rserve daemon:

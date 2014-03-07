@@ -37,21 +37,29 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
     <parent>
         <artifactId>fos</artifactId>
         <groupId>com.feedzai.fos</groupId>
-        <version>1.0.3</version>
+        <version>1.0.4-SNAPSHOT</version>
     </parent>
 
 
     <dependencies>
+        <!-- PMML model classes to test the PMML produced by R -->
+        <dependency>
+          <groupId>org.jpmml</groupId>
+          <artifactId>pmml-model</artifactId>
+          <version>1.0.21</version>
+	  <scope>test</scope>
+       </dependency>
+
         <!-- inter project -->
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-api</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-common</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4-SNAPSHOT</version>
         </dependency>
 
         <!-- logging -->
