@@ -27,11 +27,9 @@ import com.feedzai.fos.api.Attribute;
 import com.feedzai.fos.api.FOSException;
 import com.feedzai.fos.api.ModelConfig;
 import com.feedzai.fos.common.validation.NotNull;
-import com.google.common.collect.ImmutableSet;
 
 import java.io.File;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -102,9 +100,9 @@ public class RModelConfig {
     // End of configuration keys constants
 
     /**
-     * Builtin Random forest train function
+     * Builtin (Random Forest) train function
      */
-    public static final String BUILT_IN_TRAIN_FUNCTION = "svm";
+    public static final String BUILT_IN_TRAIN_FUNCTION = "randomForest";
 
     /**
      * Extension for generated PMML files.
