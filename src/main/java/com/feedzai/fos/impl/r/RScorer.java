@@ -396,7 +396,7 @@ public class RScorer implements Scorer {
         // R's pmml package doesn't honor the trained class index, and always places it
         // as the first element of the data dictionary. Because the package is very
         // limited in its configuration, we've placed the class index in the Application tag
-        // <Application name="FOS-R/classIndex=2">.
+        // <Application name="FOS-R/classindex=2">.
         // This is very, very ugly, but couldn't find a better solution
         String pmmlApplication =  String.format("\"FOS-R/classindex=%d\"", classIndex);
 
