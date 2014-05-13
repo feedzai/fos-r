@@ -109,7 +109,7 @@ public class FosRserve implements FosRServeAPI {
 
             REXP result = connection.parseAndEval("try(eval(parse(text=trycodeblock)),silent=TRUE)");
             if (result != null && result.inherits("try-error")) {
-                throw new FOSException(result.asString());
+                throw new FOSException(result.toDebugString());
             }
             if (result == null || result.isNull()) {
                 return null;

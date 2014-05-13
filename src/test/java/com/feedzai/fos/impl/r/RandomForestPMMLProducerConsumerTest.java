@@ -62,6 +62,7 @@ public class RandomForestPMMLProducerConsumerTest {
         ModelConfig modelConfig = new ModelConfig(attributes, properties);
         modelConfig.setProperty(RModelConfig.LIBRARIES, "randomForest, foreign");
         modelConfig.setProperty(RModelConfig.TRAIN_FUNCTION, "randomForest");
+        modelConfig.setProperty(RModelConfig.TRAIN_FUNCTION_ARGUMENTS, "na.action = na.roughfix");
 
         modelConfig.setProperty(RModelConfig.CLASS_INDEX, Integer.valueOf(attributes.size() - 1).toString());
 

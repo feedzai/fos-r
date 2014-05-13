@@ -130,10 +130,14 @@ public class RScorer implements Scorer {
      * @param sb String buffer that contain the generated string
      */
     private void appendValue(Object scorable, StringBuilder sb) {
-        if (scorable instanceof String) {
+        if (scorable == null) {
+            sb.append("NA"); /* NA is the missing value constant in R */
+
+        } else if (scorable instanceof String) {
             sb.append('"')
               .append(scorable)
               .append('"');
+
         } else {
             sb.append(scorable);
         }
@@ -156,7 +160,6 @@ public class RScorer implements Scorer {
         }
 
     }
-
 
     @Override
     @NotNull
@@ -340,7 +343,6 @@ public class RScorer implements Scorer {
     private void generateLevelFactorConversion(String rEnvironment, List<CategoricalAttribute> categoricals, StringBuilder sb) {
         for (CategoricalAttribute categoricalAttribute : categoricals) {
             List<String> factors = new ArrayList<>(categoricalAttribute.getCategoricalInstances());
-            factors.remove(categoricalAttribute.getUnknownReplacementIndex());
             sb.append(String.format(
                     "   v['%1$s'] <- factor(v['%1$s'], levels = c('%2$s'))\n",
                     categoricalAttribute.getName(),

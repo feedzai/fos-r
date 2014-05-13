@@ -229,10 +229,8 @@ public class RManager implements Manager {
                 pw.println("REAL");
             } else if( attribute instanceof  CategoricalAttribute ) {
                 CategoricalAttribute cat = (CategoricalAttribute) attribute;
-                List<String> values = new ArrayList(cat.getCategoricalInstances());
-                values.remove(cat.getUnknownReplacementIndex());
                 pw.print("{ '");
-                pw.print(Joiner.on("', '").join(values));
+                pw.print(Joiner.on("', '").join(cat.getCategoricalInstances()));
                 pw.println("'}");
             }
         }
@@ -240,7 +238,8 @@ public class RManager implements Manager {
         pw.println("@data");
         // Dump instances to file
         for (Object[] instance : instances) {
-            pw.println(Joiner.on(',').join(instance));
+            /* ? is the missing value constant in ARFF files */
+            pw.println(Joiner.on(',').useForNull("?").join(instance));
         }
         pw.close();
         return instanceFile;
