@@ -22,7 +22,7 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
     <modelVersion>4.0.0</modelVersion>
     <artifactId>fos-impl-r</artifactId>
     <name>FOS Implementation (R)</name>
-    <version>1.0.4</version>
+    <version>1.0.5-SNAPSHOT</version>
 
     <description>Feedzai Open Scoring Server - R Implementation</description>
 
@@ -32,12 +32,12 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
         <connection>scm:git:git@github.com:feedzai/fos-r.git</connection>
         <developerConnection>scm:git:git@github.com:feedzai/fos-r.git</developerConnection>
         <url>git@github.com:feedzai/fos-r.git</url>
-        <tag>fos-impl-r-1.0.4</tag>
+        <tag>HEAD</tag>
     </scm>
     <parent>
         <artifactId>fos</artifactId>
         <groupId>com.feedzai.fos</groupId>
-        <version>1.0.4</version>
+        <version>1.0.5-SNAPSHOT</version>
     </parent>
 
 
@@ -54,12 +54,12 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-api</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-common</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5-SNAPSHOT</version>
         </dependency>
 
         <!-- logging -->
