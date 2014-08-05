@@ -36,7 +36,7 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
     <parent>
         <artifactId>fos</artifactId>
         <groupId>com.feedzai.fos</groupId>
-        <version>1.0.3</version>
+        <version>1.0.3.1-SNAPSHOT</version>
     </parent>
 
 
@@ -45,12 +45,12 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-api</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.3.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-common</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.3.1-SNAPSHOT</version>
         </dependency>
 
         <!-- logging -->
