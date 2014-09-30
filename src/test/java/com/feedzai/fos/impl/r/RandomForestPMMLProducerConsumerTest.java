@@ -30,11 +30,11 @@ import com.feedzai.fos.impl.r.config.RManagerConfig;
 import com.feedzai.fos.impl.r.config.RModelConfig;
 import com.feedzai.fos.impl.r.rserve.FosRserve;
 import org.apache.commons.configuration.BaseConfiguration;
-import org.dmg.pmml.IOUtil;
-import org.dmg.pmml.PMML;
+import org.jpmml.model.JAXBUtil;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import javax.xml.transform.stream.StreamSource;
 import java.io.File;
 import java.io.FileInputStream;
 import java.nio.file.Files;
@@ -93,7 +93,9 @@ public class RandomForestPMMLProducerConsumerTest {
         // Save the model as PMML and load it.
         rManager.saveAsPMML(uuid, targetFile.getAbsolutePath(), false);
 
-        IOUtil.unmarshal(targetFile);
+        try (FileInputStream fis = new FileInputStream(targetFile)) {
+            JAXBUtil.unmarshalPMML(new StreamSource(fis));
+        }
 
         targetFile.delete();
     }
@@ -112,7 +114,8 @@ public class RandomForestPMMLProducerConsumerTest {
 
         try (FileInputStream fis = new FileInputStream(targetFile);
              GZIPInputStream gis = new GZIPInputStream(fis)) {
-            IOUtil.unmarshal(gis);
+
+            JAXBUtil.unmarshalPMML(new StreamSource(gis));
         }
 
         targetFile.delete();

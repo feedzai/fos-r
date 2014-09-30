@@ -46,7 +46,7 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
         <dependency>
           <groupId>org.jpmml</groupId>
           <artifactId>pmml-model</artifactId>
-          <version>1.0.21</version>
+          <version>1.1.7</version>
 	  <scope>test</scope>
        </dependency>
 
