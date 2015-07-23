@@ -23,12 +23,10 @@
 package com.feedzai.fos.impl.r;
 
 import com.feedzai.fos.api.*;
-import com.feedzai.fos.common.validation.NotNull;
 import com.feedzai.fos.impl.r.config.RModelConfig;
 import com.feedzai.fos.impl.r.rserve.FosRserve;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,26 +99,23 @@ public class RScorer implements Scorer {
         }
     }
 
+
     @Override
-    public List<double[]> score(List<UUID> modelIds, Object[] scorables) throws FOSException {
-        List<double[]> scores = new ArrayList<>();
-        for (UUID uuid : modelIds) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(uuid2environment(uuid))
-              .append("$score(c(");
-            for (int i = 0; i != scorables.length - 1; ++i) {
-                appendValue(scorables[i], sb);
-                sb.append(',');
-            }
-            appendValue(scorables[scorables.length - 1], sb);
+    public final double[] score(final UUID modelId, final Object[] scorable) throws FOSException {
+        StringBuilder sb = new StringBuilder();
+        sb.append(uuid2environment(modelId))
+            .append("$score(c(");
 
-            sb.append("))");
-
-            double[] result = rserve.eval(sb.toString());
-            scores.add(result);
+        for (int i = 0; i != scorable.length - 1; ++i) {
+            appendValue(scorable[i], sb);
+            sb.append(',');
         }
 
-        return scores;
+        appendValue(scorable[scorable.length - 1], sb);
+
+        sb.append("))");
+
+        return rserve.eval(sb.toString());
     }
 
     /**
@@ -144,35 +139,10 @@ public class RScorer implements Scorer {
     }
 
     @Override
-    public Map<UUID, double[]> score(Map<UUID, Object[]> modelIdsToScorables) throws FOSException {
-        Map<UUID, double[]> scoreMap = new HashMap<>();
-
-        for(UUID uuid : modelIdsToScorables.keySet()) {
-            scoreMap.put(uuid, score(ImmutableList.of(uuid), modelIdsToScorables.get(uuid)).get(0));
-        }
-        return scoreMap;
-    }
-
-    @Override
     public void close() throws FOSException {
         for (UUID uuid : uuids) {
             removeModel(uuid);
         }
-
-    }
-
-    @Override
-    @NotNull
-    public List<double[]> score(UUID modelId, List<Object[]> scorables) throws FOSException {
-        checkNotNull(scorables, "List of scorables cannot be null");
-
-        List<double[]> scores = new ArrayList<>(scorables.size());
-
-        for (Object[] scorable : scorables) {
-            scores.addAll(score(ImmutableList.of(modelId), scorable));
-        }
-
-        return scores;
     }
 
     /**
