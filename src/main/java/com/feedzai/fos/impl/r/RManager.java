@@ -23,7 +23,15 @@
 
 package com.feedzai.fos.impl.r;
 
-import com.feedzai.fos.api.*;
+import com.feedzai.fos.api.Attribute;
+import com.feedzai.fos.api.CategoricalAttribute;
+import com.feedzai.fos.api.FOSException;
+import com.feedzai.fos.api.Manager;
+import com.feedzai.fos.api.Model;
+import com.feedzai.fos.api.ModelBinary;
+import com.feedzai.fos.api.ModelConfig;
+import com.feedzai.fos.api.ModelDescriptor;
+import com.feedzai.fos.api.NumericAttribute;
 import com.feedzai.fos.common.validation.NotBlank;
 import com.feedzai.fos.common.validation.NotNull;
 import com.feedzai.fos.impl.r.config.RManagerConfig;
@@ -31,6 +39,7 @@ import com.feedzai.fos.impl.r.config.RModelConfig;
 import com.feedzai.fos.impl.r.rserve.FosRserve;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import org.slf4j.Logger;
@@ -40,13 +49,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.zip.GZIPOutputStream;
-
-import static com.feedzai.fos.impl.r.RScorer.rVariableName;
 
 import static com.feedzai.fos.api.util.ManagerUtils.createModelFile;
 import static com.feedzai.fos.api.util.ManagerUtils.getUuid;
+import static com.feedzai.fos.impl.r.RScorer.rVariableName;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -265,6 +277,11 @@ public class RManager implements Manager {
         }
     }
 
+    @Override
+    public double[] featureImportance(UUID uuid, Optional<List<Object[]>> instances, double sampleRate, long seed) throws FOSException {
+        throw new FOSException("FOS R implementation does not support feature importance");
+    }
+
     /**
      * Generate R boilerplate code to train a model. By default it will use a build in implementation using random
      * randomForest. Another algorithm can be used by overriding <code>RModelConfig.TRAIN_FILE</code> and
@@ -294,7 +311,7 @@ public class RManager implements Manager {
      *
      * @param config    the model configuration
      * @param path File with the training instances
-     * @return
+     * @return The trained model
      * @throws FOSException
      */
     @Override

@@ -42,24 +42,16 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
 
 
     <dependencies>
-        <!-- PMML model classes to test the PMML produced by R -->
-        <dependency>
-          <groupId>org.jpmml</groupId>
-          <artifactId>pmml-model</artifactId>
-          <version>1.1.7</version>
-	  <scope>test</scope>
-       </dependency>
-
         <!-- inter project -->
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-api</artifactId>
-            <version>1.0.9-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>fos-common</artifactId>
-            <version>1.0.9-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- logging -->
@@ -67,7 +59,6 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
 
         <dependency>
             <groupId>net.sf.opencsv</groupId>
@@ -149,6 +140,14 @@ along with FOS.  If not, see <http://www.gnu.org/licenses />.
         <dependency>
             <groupId>org.easymock</groupId>
             <artifactId>easymock</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- PMML model classes to test the PMML produced by R -->
+        <dependency>
+            <groupId>org.jpmml</groupId>
+            <artifactId>pmml-model</artifactId>
+            <version>1.1.7</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
